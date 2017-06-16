@@ -268,6 +268,26 @@ let pre_join_checks ~__context ~rpc ~session_id ~force =
       raise (Api_errors.Server_error(Api_errors.pool_hosts_not_compatible, []))
     end in
 
+  (*
+  (* assert that the product version of localhost and master is the same *)
+  let assert_product_version () =
+    let key = Xapi_globs._product_version in
+    let me  =
+      Helpers.get_localhost ~__context
+      |> fun self -> Db.Host.get_record ~__context ~self in
+    let master =
+      get_master rpc session_id
+      |> fun self -> Client.Host.get_record ~rpc ~session_id ~self in
+    let get key versions = try List.assoc key versions with _ -> "" in
+    let my_version       = get key me.API.host_software_version in
+    let master_version   = get key master.API.host_software_version in
+    if my_version <> master_version then begin
+      debug "pool join: product versions on local (%s) and master (%s) differ"
+        my_version master_version;
+      raise Api_errors.(Server_error(pool_joining_host_must_have_same_product_version, []))
+    end in
+  *)
+
   let assert_hosts_homogeneous () =
     let me = Helpers.get_localhost ~__context in
     let master_ref = get_master rpc session_id in
@@ -1233,7 +1253,7 @@ let management_reconfigure ~__context ~network =
       raise (Api_errors.Server_error(Api_errors.pif_not_present, [Ref.string_of host; Ref.string_of network]));
   ) all_hosts;
 
-  let address_type = Db.PIF.get_primary_address_type ~__context ~self:(List.hd pifs_on_network) in 
+  let address_type = Db.PIF.get_primary_address_type ~__context ~self:(List.hd pifs_on_network) in
   List.iter (fun self ->
     let primary_address_type = Db.PIF.get_primary_address_type ~__context ~self in
     if primary_address_type <> address_type then
