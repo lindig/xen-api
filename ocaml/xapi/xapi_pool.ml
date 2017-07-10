@@ -389,7 +389,7 @@ let pre_join_checks ~__context ~rpc ~session_id ~force =
   (* CA-247399: check first the API version and then the database schema *)
   assert_api_version_matches ();
   assert_db_schema_matches ();
-  assert_homogeneous_updates ();
+  if (not force) then assert_homogeneous_updates ();
   assert_homogeneous_primary_address_type ()
 
 let rec create_or_get_host_on_master __context rpc session_id (host_ref, host) : API.ref_host =
