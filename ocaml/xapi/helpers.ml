@@ -425,6 +425,8 @@ let check_domain_type : API.domain_type -> [ `hvm | `pv_in_pvh | `pv ] = functio
   | `pv_in_pvh -> `pv_in_pvh
   | `pv -> `pv
   | `unspecified ->
+    let trace = Printexc.get_backtrace () in
+    debug "check_domain_type's back trace: %s" trace;
     raise Api_errors.(Server_error (internal_error, ["unspecified domain type"]))
 
 let domain_type ~__context ~self : [ `hvm | `pv_in_pvh | `pv ] =
