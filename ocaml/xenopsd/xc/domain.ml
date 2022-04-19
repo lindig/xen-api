@@ -27,12 +27,16 @@ open D
 
 let finally = Xapi_stdext_pervasives.Pervasiveext.finally
 
+module GeeZip = Xapi_compression.Make (struct
+  let executable = "/tmp/gzip.sh"
+end)
+
 module Compression = struct
   let scheme = "gzip"
 
-  let compress = Gzip.compress
+  let compress = GeeZip.compress
 
-  let decompress = Gzip.decompress_passive
+  let decompress = GeeZip.decompress_passive
 end
 
 type xen_arm_arch_domainconfig = Xenctrl.xen_arm_arch_domainconfig = {
