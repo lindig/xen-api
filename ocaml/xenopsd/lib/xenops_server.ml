@@ -2449,7 +2449,7 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
             let final_handshake () =
               Handshake.send ~verbose:true mem_fd Handshake.Success ;
               debug "VM.migrate: Synchronisation point 3" ;
-              match Handshake.recv mem_fd with
+              match Handshake.recv ~verbose:true mem_fd with
               | Success ->
                   debug "VM.migrate: Synchronisation point 4"
               | Error msg ->
