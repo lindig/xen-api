@@ -361,7 +361,7 @@ let pool_migrate ~__context ~vm ~host ~options =
   let compress =
     (* don't use compression for localhost migration *)
     let is_local = host = Helpers.get_localhost ~__context in
-    get_bool_option ~default:false "compress" options && not is_local
+    get_bool_option ~default:true "compress" options && not is_local
   in
   debug "%s using stream compression=%b" __FUNCTION__ compress ;
   let ip = Http.Url.maybe_wrap_IPv6_literal address in
