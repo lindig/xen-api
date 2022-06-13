@@ -2685,8 +2685,7 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
         debug "VM.receive_memory: Synchronisation point 2" ;
         try
           (* Receive the all-clear to unpause *)
-          if not vmr_compressed then
-            Handshake.recv_success ~verbose:true s ;
+          Handshake.recv_success ~verbose:true s ;
           debug "VM.receive_memory: Synchronisation point 3" ;
           if final_id <> id then (
             debug "VM.receive_memory: Renaming domain" ;
@@ -2706,8 +2705,7 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
               ]
             )
             t ;
-          if not vmr_compressed then
-            Handshake.send s Handshake.Success ;
+          Handshake.send s Handshake.Success ;
           debug "VM.receive_memory: Synchronisation point 4"
         with e ->
           finally
