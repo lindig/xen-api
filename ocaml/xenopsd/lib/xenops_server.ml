@@ -2481,8 +2481,6 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
               debug "VM.migrate: Synchronisation point 1"
             in
             let final_handshake () =
-              Handshake.send ~verbose:true mem_fd Handshake.Success ;
-              debug "VM.migrate: Synchronisation point 3" ;
               match Handshake.recv mem_fd with
               | Success ->
                   debug "VM.migrate: Synchronisation point 4"
@@ -2504,15 +2502,15 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
                 ; VM_rename (id, new_src_id, Pre_migration)
                 ]
                 t ;
-              debug "VM.migrate: Synchronisation point 2"
+              debug "VM.migrate: Synchronisation point 2" ;
+              Handshake.send ~verbose:true mem_fd Handshake.Success ;
+              debug "VM.migrate: Synchronisation point 3"
             in
             (* If we have a vGPU, kick off its migration process before starting
                the main VM migration sequence. *)
             match VGPU_DB.ids id with
             | [] ->
-                first_handshake () ;
-                save () ;
-                if not compress_memory then final_handshake ()
+                first_handshake () ; save () ; final_handshake ()
             | (_vm_id, dev_id) :: _ ->
                 let vgpu_url =
                   make_url "/migrate-vgpu/"
@@ -2528,7 +2526,7 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
                     first_handshake () ;
                     save ~vgpu_fd:(FD vgpu_fd) ()
                 ) ;
-                if not compress_memory then final_handshake ()
+                final_handshake ()
         ) ;
         (* cleanup tmp src VM *)
         let atomics =

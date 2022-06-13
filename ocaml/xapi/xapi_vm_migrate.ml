@@ -358,10 +358,7 @@ let pool_migrate ~__context ~vm ~host ~options =
         .assert_valid_ip_configuration_on_network_for_host ~__context
           ~self:network ~host
   in
-  let compress =
-    let is_local = host = Helpers.get_localhost ~__context in
-    not is_local
-  in
+  let compress = get_bool_option ~default:false "compress" options in
   debug "%s using stream compression=%b" __FUNCTION__ compress ;
   let ip = Http.Url.maybe_wrap_IPv6_literal address in
   let xenops_url =
