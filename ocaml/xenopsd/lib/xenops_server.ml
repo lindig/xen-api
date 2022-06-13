@@ -2666,7 +2666,10 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
                    ]
                 )
                 t ;
-              debug "VM.receive_memory restore complete"
+              debug "VM.receive_memory restore complete" ;
+              debug "VM.receive_memory: Synchronisation point 2" ;
+              Handshake.recv_success ~verbose:true s ;
+              debug "VM.receive_memory: Synchronisation point 3"
             with e ->
               Backtrace.is_important e ;
               Debug.log_backtrace e (Backtrace.get e) ;
@@ -2682,11 +2685,8 @@ and perform_exn ?subtask ?result (op : operation) (t : Xenops_task.task_handle)
               (fun x -> Event.send x.vgpu_channel () |> Event.sync)
               vgpu_info
           ) ;
-        debug "VM.receive_memory: Synchronisation point 2" ;
         try
           (* Receive the all-clear to unpause *)
-          Handshake.recv_success ~verbose:true s ;
-          debug "VM.receive_memory: Synchronisation point 3" ;
           if final_id <> id then (
             debug "VM.receive_memory: Renaming domain" ;
             perform_atomics [VM_rename (id, final_id, Post_migration)] t
