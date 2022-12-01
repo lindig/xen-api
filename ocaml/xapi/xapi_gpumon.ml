@@ -18,29 +18,20 @@ open D
 
 let gpumon = "xcp-rrdd-gpumon"
 
-module Gpumon = Daemon_manager.Make (struct
-  let check =
-    Daemon_manager.Function
-      (fun () ->
-        try
-          ignore
-            (Forkhelpers.execute_command_get_output !Xapi_globs.systemctl
-               ["is-active"; "-q"; gpumon]
-            ) ;
-          true
-        with _ -> false
-      )
-
-  let start () =
-    debug "Starting %s" gpumon ;
-    Xapi_systemctl.start ~wait_until_success:false gpumon
-
-  let stop () =
-    debug "Stopping %s" gpumon ;
-    Xapi_systemctl.stop ~wait_until_success:false gpumon
-end)
-
-let with_gpumon_stopped = Gpumon.with_daemon_stopped
+(** we no longer stop gpumon but simply tell it to unload the NVML
+    library, which was the reason we needed to stop it *)
+let with_gpumon_stopped ?(timeout = 30.0) f =
+  let module GPU = Gpumon_client.Client.Nvidia in
+  let defer finally = Fun.protect ~finally in
+  let dbg = __FUNCTION__ in
+  match GPU.nvml_is_attached dbg with
+  | false ->
+      (* nothing to do, just execute f *)
+      f ()
+  | true ->
+      (* detach, execute f, re-attach in any case *)
+      defer (fun () -> GPU.nvml_attach dbg) @@ fun () ->
+      GPU.nvml_detach dbg ; f ()
 
 module Nvidia = struct
   let key = "nvidia"
