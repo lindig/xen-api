@@ -27,11 +27,18 @@ let with_gpumon_stopped ?(timeout = 30.0) f =
   match GPU.nvml_is_attached dbg with
   | false ->
       (* nothing to do, just execute f *)
+      debug "%s: NVML is not attached - progressing" __FUNCTION__ ;
       f ()
   | true ->
       (* detach, execute f, re-attach in any case *)
-      defer (fun () -> GPU.nvml_attach dbg) @@ fun () ->
-      GPU.nvml_detach dbg ; f ()
+      defer (fun () ->
+          debug "%s: NVML was attached - re-attaching it" __FUNCTION__ ;
+          GPU.nvml_attach dbg
+      )
+      @@ fun () ->
+      debug "%s: NVML is attached - detaching it" __FUNCTION__ ;
+      GPU.nvml_detach dbg ;
+      f ()
 
 module Nvidia = struct
   let key = "nvidia"
