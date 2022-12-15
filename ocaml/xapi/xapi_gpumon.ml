@@ -24,6 +24,22 @@ let with_gpumon_stopped ?(timeout = 30.0) f =
   let module GPU = Gpumon_client.Client.Nvidia in
   let defer finally = Fun.protect ~finally in
   let dbg = __FUNCTION__ in
+  let rec attach_with_retries = function
+    | n when n <= 0 ->
+        error "%s: NVML re-attaching failed" __FUNCTION__ ;
+        raise Api_errors.(Server_error (nvidia_tools_error, []))
+    | n -> (
+      try
+        debug "%s: NVML was attached - re-attaching it" __FUNCTION__ ;
+        GPU.nvml_attach dbg
+      with e ->
+        error "%s: NVML re-attaching error: %s" __FUNCTION__
+          (Printexc.to_string e) ;
+        Thread.delay 4.0 ;
+        attach_with_retries (n - 1)
+    )
+  in
+
   match GPU.nvml_is_attached dbg with
   | false ->
       (* nothing to do, just execute f *)
@@ -31,11 +47,7 @@ let with_gpumon_stopped ?(timeout = 30.0) f =
       f ()
   | true ->
       (* detach, execute f, re-attach in any case *)
-      defer (fun () ->
-          debug "%s: NVML was attached - re-attaching it" __FUNCTION__ ;
-          GPU.nvml_attach dbg
-      )
-      @@ fun () ->
+      defer (fun () -> attach_with_retries 2) @@ fun () ->
       debug "%s: NVML is attached - detaching it" __FUNCTION__ ;
       GPU.nvml_detach dbg ;
       f ()
