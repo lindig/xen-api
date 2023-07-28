@@ -633,10 +633,11 @@ let startup log =
 
               (* Start the I/O process *)
               let ctrlsockpath, datasockpath =
-                let f suffix =
-                  Filename.temp_file Db_globs.redo_log_comms_socket_stem suffix
+                let mk_path suffix =
+                  Filename.temp_file ~temp_dir:"/var/xapi"
+                    Db_globs.redo_log_comms_socket_stem suffix
                 in
-                (f "ctrl", f "data")
+                (mk_path ".ctrl", mk_path ".data")
               in
               D.info
                 "Starting I/O process with block device [%s], control socket \
