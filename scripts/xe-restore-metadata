@@ -52,6 +52,13 @@ function test_sr {
   fi
 }
 
+# name space to hash SRs for a deterministic VDI UUID
+NS="e93e0639-2bdb-4a59-8b46-352b3f408c19"
+function uuid5 {
+  # could use a modern uuidgen but it's not on XS 8
+  python -c "import uuid; print (uuid.uuid5(uuid.UUID('$1'), '$2'))"
+}
+
 dry_run=0
 sr_uuid=
 yes=0
@@ -99,6 +106,13 @@ fi
 test_sr "${sr_uuid}"
 
 sr_name=$(${XE} sr-param-get uuid=${sr_uuid} param-name=name-label)
+
+# probe first for a VDI with known UUID derived from the SR to avoid
+# scanning for a VDI
+backup_vdi=$(uuid5 "${NS}" "${sr_uuid}")
+if [ -z "${vdis}" ]; then
+  vdis=$(${XE} vdi-list uuid="${backup_vdi}" sr-uuid=${sr_uuid} read-only=false --minimal)
+fi
 
 # get a list of all VDIs if an override has not been provided on the cmd line
 if [ -z "${vdis}" ]; then
@@ -149,6 +163,14 @@ fi
 trap cleanup SIGINT ERR
 
 for vdi_uuid in ${vdis}; do
+   if [ "${vdi_uuid}" != "${backup_vdi}" ]; then
+      echo "Probing VDI ${vdi_uuid}."
+      echo "This VDI was created with a prior version of XenServer."
+      echo "Its validity can't be checked without mounting it first."
+      read -p "Continue? [Y/N]" -n 1 -r; echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then exit 1; fi
+   fi
+
    ${debug} echo -n "Creating VBD: " >&2
    vbd_uuid=$(${XE} vbd-create vm-uuid=${CONTROL_DOMAIN_UUID} vdi-uuid=${vdi_uuid} device=autodetect 2>/dev/null)
 
