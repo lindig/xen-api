@@ -231,7 +231,10 @@ field `reboot_required` or similar.
 
 ### Methods
 
-* All method invocations require `Pool_Admin` rights.
+* All method invocations require `Pool_Operator` rights. "The Pool
+  Operator role manages host- and pool-wide resources, including setting
+  up storage, creating resource pools and managing patches, high
+  availability (HA) and workload balancing (WLB)"
 
 * `select (self, version)`; select `version` of driver `self`. Selecting
   the version (a string) of an existing driver.
@@ -274,8 +277,15 @@ Deselecting a driver would mean removing the symlink `updates/name.ko`.
 
 ### Version Order
 
-We have not decided yet how version strings should be parsed to define
-an order over versions. This aspect should be isolated in a function. 
+We have not decided yet how version strings should be parsed to define a
+total order over versions. This aspect should be isolated in a function.
+We probably should force partners to use a specified format to avoid
+ambiguity. For example, `1.10.2` is in lexical order smaller than
+`1.1.2` but not if we break the string into numbers separated by dots.
+This becomes more complicated once arbitrary characters are permitted in
+version strings.
+
+
 
 
 
