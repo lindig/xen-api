@@ -201,7 +201,7 @@ uuid ( RO)                : 3b3db5f6-3a6d-e668-9fd4-c2a21998dc08
 
 ## Class HostDriver
 
-We introduce a new class `HostDriver` whose instances represent a
+We introduce a new class `Host_driver` whose instances represent a
 multi-version driver on a host. 
 
 ### Fields
@@ -229,6 +229,9 @@ active version are not the same, a reboot is required to activate the
 selected driver/version combination. This could be synthesized into a
 field `reboot_required` or similar.
 
+(We are not using `host-driver` to avoid the impresseion that this is
+ part of a host object.)
+
 ### Methods
 
 * All method invocations require `Pool_Operator` rights. "The Pool
@@ -238,6 +241,12 @@ field `reboot_required` or similar.
 
 * `select (self, version)`; select `version` of driver `self`. Selecting
   the version (a string) of an existing driver.
+
+* `rescan (host)`: scan the host and update its driver information.
+  \(This could be implemented as a host method but I would prefer to
+  keep this together.\) This method could be called after driving
+  installation to update the database without a toolstack restart \(where
+  it is also called.\)
 
 * `deselect(self)`: For completeness it makes sense to provide a
   `deselect(self)` method which would mean that this driver can't be
@@ -254,11 +263,11 @@ Deselecting a driver would mean removing the symlink `updates/name.ko`.
 
 ### Database
 
-* Each HostDriver object is represented in the database and data is
+* Each `Host_driver` object is represented in the database and data is
   persisted over reboots. This means this data will be part of data
   collected in a `xen-bugtool` invocation.
 
-* On xapi start-up, xapi needs to update the `HostDriver` objects
+* On xapi start-up, xapi needs to update the `Host_driver` objects
   belonging to the host to reflect the actual situation. We should not
   delete all objects and re-create them because this would invalidate
   any reference an API client would hold. Hence, the implementation
@@ -285,6 +294,7 @@ ambiguity. For example, `1.10.2` is in lexical order smaller than
 This becomes more complicated once arbitrary characters are permitted in
 version strings.
 
+##
 
 
 
