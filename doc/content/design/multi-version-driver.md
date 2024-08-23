@@ -25,7 +25,7 @@ want to support multiple versions. A driver has typically file extension
 `.ko` (kernel object).
 
 A presence in the file system does not mean that a driver is loaded as
-this happens only on demand. The actually loaded drivers 
+this happens only on demand. The actually loaded drivers
 (or modules, in Linux parlance) can be observed from
 
 * `/proc/modules`
@@ -46,7 +46,7 @@ which includes dependencies between modules (the `-` means no dependencies).
   file system. From the kernel's perspective a driver has a unique name
   and is loaded at most once. We thus can talk about a driver using its
   name and acknowledge it may exist in different versions in the file
-  system. 
+  system.
 
 * A driver that is loaded by the kernel we call *active*.
 
@@ -128,7 +128,9 @@ desired version.
 
 The version of a driver is encoded in the path to its object file but
 not in the name itself: for `xenserver/intel-ice/1.11.17.1/ice.ko` the
-driver name is `ice` and only its location hints at the version. 
+driver name is `ice` and only its location hints at the version. See the
+remark below that we need a versioning scheme that provides a
+well-defined total order over versions.
 
 The kernel does not reveal the location from where it loaded an active
 driver. Hence the name is not sufficient to observe the currently active
@@ -158,9 +160,10 @@ a null-terminated string holding the version. The name will be fixed to
 "XenServer". The exact format is described in [ELF notes]. I recommend
 to implement a parser for notes using Angstrom.
 
-It is not clear to me why a driver would have more than a single
-"XenServer" record in its notes. In that case we would have to define
-how to find the version we are looking for.
+We expect to have exactly one note with name "XenServer" and a
+to-be-defined type that then has the version as a null-terminated string
+the `desc` field. Additional "XenServer" notes of a different type may
+be present.
 
 [ELF notes]: https://www.netbsd.org/docs/kernel/elf-notes.html
 
@@ -168,14 +171,18 @@ how to find the version we are looking for.
 
 We want to extend Xapi with new capabilities to inspect and select
 multi-version drivers. We are only interested in multi-version drivers
-(rather than all drivers) as only those offer a choice. The API uses the
-terminology introduced above:
+(rather than all drivers) as only those offer a choice. The feature
+requirements document should define where to find the drivers and in
+addition, if we going to track drivers that are in the multi-version
+hierarchy but offer only a single version.
+
+The API uses the terminology introduced above:
 
 * A driver is specific to a host
 * A driver has a unique name; however, for API purposes a driver is
   identified by a UUID (on the CLI) and reference (programmatically).
-* A driver has multiple versions; a version is a string and we
-  most likely will use alphabetical order.
+* A driver has multiple versions; a version that defines a total order.
+  See below for a discussion.
 * A driver is active if it is currently used by the kernel (loaded)
 * A driver is selected if it will be considered by the kernel (on next
   boot or when loading on demand).
@@ -190,7 +197,7 @@ sketch.
 ```
 # xe hostdriver-select uuid=3b3db5f6-3a6d-e668-9fd4-c2a21998dc08 version=3
 
-# xe hostdriver-list uuid=3b3db5f6-3a6d-e668-9fd4-c2a21998dc08 
+# xe hostdriver-list uuid=3b3db5f6-3a6d-e668-9fd4-c2a21998dc08
 uuid ( RO)                : 3b3db5f6-3a6d-e668-9fd4-c2a21998dc08
                 name ( RO): crct10dif_pclmul
            host-uuid ( RO): e51d9f8c-e3d4-42ff-ad9c-c5a66078a096
@@ -202,7 +209,7 @@ uuid ( RO)                : 3b3db5f6-3a6d-e668-9fd4-c2a21998dc08
 ## Class HostDriver
 
 We introduce a new class `Host_driver` whose instances represent a
-multi-version driver on a host. 
+multi-version driver on a host.
 
 ### Fields
 
@@ -211,7 +218,7 @@ All fields are read-only and can't be set directly.
 * `host`: reference to the host where the driver is installed.
 * `name`: string; name of the driver without ".ko" extension.
 * `versions`: string set; set of versions available on the host. These are
-  arbitrary strings. This set should have no duplicates. 
+  arbitrary strings. This set should have no duplicates.
   We could consider storing the paths for each driver and to extract the
   version from it for display purposes or to store a pair of version and
   paths.
@@ -251,32 +258,35 @@ field `reboot_required` or similar.
 * `deselect(self)`: For completeness it makes sense to provide a
   `deselect(self)` method which would mean that this driver can't be
   loaded next time the kernel is looking for a driver. But this could be
-  dangerous operation. So if we decide to implement it, it need to be
+  dangerous operation. So if we decide to implement it, it needs to be
   protected at the CLI with a `--force` flag.
 
 Selecting a version on a host means creating a symbolic link \(aka
 symlink\) from `updates/name.ko` to `xenserver/version/name.ko`. Given
 that the name of a driver is unique, this means replacing any existing
-symlink with the new one.
+symlink with the new one. Do we have to run `modprobe(8)` afertwards?
 
 Deselecting a driver would mean removing the symlink `updates/name.ko`.
+Do we have to run `modprobe(8)` afertwards?
 
 ### Database
 
-* Each `Host_driver` object is represented in the database and data is
-  persisted over reboots. This means this data will be part of data
-  collected in a `xen-bugtool` invocation.
+Each `Host_driver` object is represented in the database and data is
+persisted over reboots. This means this data will be part of data
+collected in a `xen-bugtool` invocation.
 
-* On xapi start-up, xapi needs to update the `Host_driver` objects
-  belonging to the host to reflect the actual situation. We should not
-  delete all objects and re-create them because this would invalidate
-  any reference an API client would hold. Hence, the implementation
-  should use set arithmetic over driver names to find: 
+### Scan and Rescan
+
+On xapi start-up, xapi needs to update the `Host_driver` objects
+belonging to the host to reflect the actual situation. We should not
+delete all objects and re-create them because this would invalidate
+any reference an API client would hold. Hence, the implementation
+should use set arithmetic over driver names to find:
 
   1. Drivers removed from the host. These need to be removed from Xapi.
 
   2. Drivers added to the host and not yet present in Xapi. These need
-     to be added, including their selecting and active version - see
+     to be added, including their selecting and active version -- see
      below.
 
   3. Updating the driver information in xapi: find the active and
@@ -294,9 +304,85 @@ ambiguity. For example, `1.10.2` is in lexical order smaller than
 This becomes more complicated once arbitrary characters are permitted in
 version strings.
 
-##
+## Comments
 
+Below are comments that I recived and tried to incorpore above. However,
+they might provide some background but should not be essential to
+understand the design.
 
+### Ross
+
+> It is not clear to me why a driver would have more than a single
+> "XenServer" record in its notes. In that case we would have to define
+> how to find the version we are looking for.
+
+I think it would be an error to have multiple XenServer records with the
+same type. I think there are valid reasons to have other XenServer
+records \(e.g. I suggested a record that contains the rpm
+version-release for debugging purposes and there may be other records
+added that are unrelated to driver multi-version\) so the toolstack
+needs to handle that. The specific type needs to be defined somewhere
+\(though not necessarily in the toolstack design\).
+
+On xapi start-up, xapi needs to update the `Host_driver` objects
+belonging to the host to reflect the actual situation...  Is this the
+same operation as `rescan()`? The rescan operation is not described in
+detail.
+
+I see you have chosen the model of mirroring the host state into the
+database. I'm not particularly keen on that approach but I can see the
+reasons for using it.  When is rescan() called? Presumably when we
+expect the state to have changed (like after an update is installed)?
+This can be tricky since drivers can be loaded at any time.
+
+Is the toolstack going to switch symlinks or will it shell out to
+another command? In addition to simply switching the symlinks, I think
+that something needs to run depmod \(since module dependencies may have
+changed\) and regenerate the initrd \(since the module might be needed
+at boot time\).
+
+> We have not decided yet how version strings should be parsed to define
+> a total order over versions... We probably should force partners to
+> use a specified format to avoid ambiguity.`
+
+Since we build the drivers, we get to decide the format and ordering. In
+any case, it should be decided before we start building the drivers for
+XS9.  I think we may need to encode some additional information
+somewhere \(e.g. a weighting\) since in some cases \(e.g. Dell vs
+"generic"\), there isn't a simple "higher number is better" rule.
+
+Additionally, the ordering may be dependent on system state \(e.g. if it
+is detected to be a Dell system, then the Dell driver gets higher
+priority\). We don't necessarily need to implement this but it should be
+planned for in the design.
+
+Not necessarily specific to the toolstack design... but we also need to
+think about the case where we don't start with a multi-version driver
+but it becomes multi-version driver over the course of XS9. For example,
+we have an in tree driver only, then after a while we add an out-of-tree
+vendor driver to replace it, then after a while we add another \(major\)
+version of the out-of-tree vendor driver. I think this should work but
+we ought to think about it and make sure.
+
+### Rob
+
+For the class name, the convention would be `Host_driver` rather than
+`HostDriver`.
+
+There is a `PCI.driver_name` field which is set when syncing the PCI
+objects in dbsync. We should see if this name comes from the right place
+in the new model. And eventually we could add a link to the new class.
+
+I wonder if we need a way to trigger a resync after installing new
+drivers, so that a new version can be selected immediately without
+restart.
+
+We need to make it very clear in the design for which drivers we want to
+have objects in the DB. Consider that there may be many installed
+drivers that do not match any present hardware, which we may want to
+skip. Conversely, it may be good to have objects for relevant drivers
+even if there is just one available version, so that the overview of
+drivers is complete.
 
 
 
