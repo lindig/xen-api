@@ -660,11 +660,10 @@ fi
 
   let install () =
     let path = !Xapi_globs.driver_tool in
-    if not (Sys.file_exists path) then
-      try
-        Xapi_stdext_unix.Unixext.write_string_to_file path drivertool_sh ;
-        Unix.chmod path 0o755
-      with e ->
-        Helpers.internal_error "%s: can't install %s: %s" __FUNCTION__ path
-          (Printexc.to_string e)
+    try
+      Xapi_stdext_unix.Unixext.write_string_to_file path drivertool_sh ;
+      Unix.chmod path 0o755
+    with e ->
+      Helpers.internal_error "%s: can't install %s: %s" __FUNCTION__ path
+        (Printexc.to_string e)
 end

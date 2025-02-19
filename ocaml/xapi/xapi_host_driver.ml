@@ -172,7 +172,9 @@ let remove ~__context ~host ~except =
 (** Runs on [host]. We update or create an entry for each driver
     reported by drivertool and remove any extra driver that is in xapi. *)
 let scan ~__context ~host =
-  Tool.Mock.install () ;
+  let path = !Xapi_globs.driver_tool in
+  (* if the real tool is not installed, install a mock *)
+  if not (Sys.file_exists path) then Tool.Mock.install () ;
   let null = Ref.null in
   let drivers (* on this host *) =
     Tool.call ["-l"]
