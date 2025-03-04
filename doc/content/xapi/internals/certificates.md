@@ -107,5 +107,4 @@ used by clients when using HTTPS for API calls.
 * `Pool.uninstall_ca_certificate`
 * `xe pool-certificate-sync` explicitly distribute these certificates in
   the pool.
-* User-provided certificates can be used to let outside services (like
-  WLB) connect to Xapi.
+* User-provided certificates can be used to let xapi connect to WLB.
