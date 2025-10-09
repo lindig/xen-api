@@ -56,6 +56,8 @@ functor
     exception Remote_db_server_returned_bad_message
 
     let do_remote_call marshall_args unmarshall_resp fn_name args =
+      let this = Printf.sprintf "%s->%s" __FUNCTION__ fn_name in
+      Stats.time_this this @@ fun () ->
       let xml = marshall_args args in
       let xml =
         XMLRPC.To.array

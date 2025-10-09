@@ -28,7 +28,9 @@ Db_interface_compat.OfCompat (Db_rpc_client_v1.Make (struct
     ignore (Master_connection.start_master_connection_watchdog ()) ;
     ignore (Master_connection.open_secure_connection ())
 
-  let rpc request = Master_connection.execute_remote_fn request
+  let rpc request =
+    Stats.time_this __FUNCTION__ @@ fun () ->
+    Master_connection.execute_remote_fn request
 end))
 
 let get = function

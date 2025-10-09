@@ -28,7 +28,9 @@ functor
 
     let initialise = RPC.initialise
 
-    let rpc x = RPC.rpc (Jsonrpc.to_string x) |> Jsonrpc.of_string
+    let rpc x =
+      Stats.time_this __FUNCTION__ @@ fun () ->
+      RPC.rpc (Jsonrpc.to_string x) |> Jsonrpc.of_string
 
     let process (x : Request.t) =
       let y : Response.t = Response.t_of_rpc (rpc (Request.rpc_of_t x)) in
