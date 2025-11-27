@@ -1364,7 +1364,8 @@ let resume (task : Xenops_task.task_handle) ~xc ~xs ~qemu_domid ~domain_type
     domid =
   Xenctrl.domain_resume_fast xc domid ;
   resume_post ~xc ~xs domid ;
-  if domain_type = `hvm then Device.Dm.resume task ~xs ~qemu_domid domid
+  if domain_type = `hvm && (not @@ Sys.file_exists "/tmp/fast-resume") then
+    Device.Dm.resume task ~xs ~qemu_domid domid
 
 type suspend_flag = Live | Debug
 
@@ -2012,7 +2013,7 @@ let suspend (task : Xenops_task.task_handle) ~xc ~xs ~domain_type ~is_uefi ~dm
     (* Currently Qemu suspended inside above call with the libxc memory image,
        we should try putting it below in the relevant section of the
        suspend-image-writing *)
-    ( if domain_type = `hvm then
+    ( if domain_type = `hvm && (not @@ Sys.file_exists "/tmp/fast-resume") then
         write_qemu_record domid uuid main_fd
       else
         return ()

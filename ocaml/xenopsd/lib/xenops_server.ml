@@ -1882,7 +1882,12 @@ let rec atomics_of_operation = function
         ; VM_hook_script
             (id, Xenops_hooks.VM_pre_destroy, Xenops_hooks.reason__suspend)
         ]
-      ; atomics_of_operation (VM_shutdown (id, None))
+      ; ( if Sys.file_exists "/tmp/fast-resume" then (
+            debug "%s: CL skipping VM_shutdown" __FUNCTION__ ;
+            []
+          ) else
+            atomics_of_operation (VM_shutdown (id, None))
+        )
       ; [
           VM_hook_script
             (id, Xenops_hooks.VM_post_destroy, Xenops_hooks.reason__suspend)
@@ -3240,7 +3245,10 @@ and perform_exn ?result (op : operation) (t : Xenops_task.task_handle) : unit =
               vm.Vm.on_crash
         | Some Needs_suspend ->
             warn "VM %s has unexpectedly suspended" id ;
-            [Vm.Shutdown]
+            if Sys.file_exists "/tmp/fast-resume" then
+              []
+            else
+              [Vm.Shutdown]
         | Some Needs_softreset ->
             vm.Vm.on_softreboot
         | None ->
