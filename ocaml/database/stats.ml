@@ -111,4 +111,5 @@ let time_this (name : string) f =
 let summarise ?(counts = false) () =
   with_lock timings_m (fun () ->
       Hashtbl.fold (fun k v acc -> (k, string_of ~counts v) :: acc) timings []
+      |> List.sort (fun (x, _) (y, _) -> String.compare x y)
   )
