@@ -49,6 +49,8 @@ let default_vbd_backend_kind = ref "vbd"
 
 let ca_140252_workaround = ref false
 
+let vm_ack_suspend_timeout = ref 30
+
 (* Optimize performance: set MTRR WB attribute on Xen PCI MMIO BAR.
    This is useful for AMD, and mostly a noop on Intel (which achieves a similar
    effect using Intel-only features in Xen)
@@ -320,7 +322,13 @@ let options =
     , (fun () -> string_of_bool !Xenops_server.xenopsd_vbd_plug_unplug_legacy)
     , "False if we want to split the plug atomic into attach/activate"
     )
-  ]
+  ; ( "vm-ack-suspend-timeout"
+    , Arg.Set_int vm_ack_suspend_timeout
+    , (fun () -> string_of_int !vm_ack_suspend_timeout)
+    ,  "Time in seconds within a VM is expected to acknowledge a suspend \
+       request"
+    )
+ ]
 
 let path () = Filename.concat !sockets_path "xenopsd"
 
