@@ -3,7 +3,7 @@
 
 To reduce VM migration time, we want to compress the VM migration data
 stream.  This document describes a new approach that might replace an
-existing feature, described first below. 
+existing feature, described first below.
 
 ## Existing Stream Compression
 
@@ -29,9 +29,9 @@ compression and decompression work. That is the reason stream
 compression is not enabled by default.
 
 The main implementation of the feature (with some changes added later)
-is in commit: 
+is in commit:
 
-* f14fb91137197f24a4784612dd0f2d863ee22fb1 
+* f14fb91137197f24a4784612dd0f2d863ee22fb1
 * CP-39640/CP-39157 Add stream compression for VM migration
 
 ## XenGuest-based Stream Compression
@@ -39,9 +39,9 @@ is in commit:
 This design is about adding an alternative stream compression.  This one
 is implemented inside XenGuest such that the stream it produces is
 internally using compression. XenGuest is not using an external process
-for this and hence incurs less overhead because no
-process-intercommunication is required. Benchmarking confirmed the
-performance advantage of this architecture. 
+for this and hence incurs less overhead because no process
+intercommunication is required. Benchmarking confirmed the performance
+advantage of this architecture.
 
 The use of compression on the source side needs to be signaled by
 Xenopsd via a command line argument. On the receiving side XenGuest will
@@ -66,8 +66,8 @@ unlikely to be effective and we don't plan to support this feature.
 
 ## API Design
 
-* VM.migrate API and `xe vm-migrate` remain unchanged. Both accept an
-  optional boolean value that indicates whether to use compression or
+* VM.pool_migrate API and `xe vm-migrate` remain unchanged. Both accept
+  an optional boolean value that indicates whether to use compression or
   not. In the absence of this parameter, the default is taken from
   `Pool.migration_compression` (which is currently `false`).
 
@@ -82,6 +82,17 @@ unlikely to be effective and we don't plan to support this feature.
 
 * `Pool.migration_compressor=xenguest` - use the new internal method
 
+## Implementation
+
+Outside the changes described here, the following other components are
+affected:
+
+* EMU Manager needs to accept a new flag to indicated that compression
+  is used during migration.
+
+* XenGuest needs to accept a flag passed by EMU Manager to use
+  compression.
+
 ## Upgrade
 
 Xapi will always accept stream/external compressed migration streams but
@@ -89,5 +100,12 @@ might stop using them for migration.
 
 ## Outlook
 
-We might add internal compression to vGPU migration in the future. The
-API would be unaffected by this.
+* We might add internal compression to vGPU migration in the future. The
+  API would be unaffected by this.
+
+* The current design forces all destinations to accept all compression
+  streams because compatibility is not negotiate between source and
+  destination. This is a general problem and not limited to compression.
+  We could expose a general table to clients that lists features
+  supported by xenopsd such that any other xenopsd would send data in
+  the preferred format.
