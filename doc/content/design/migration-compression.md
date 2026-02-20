@@ -44,8 +44,9 @@ intercommunication is required. Benchmarking confirmed the performance
 advantage of this architecture.
 
 The use of compression on the source side needs to be signaled by
-Xenopsd via a command line argument. On the receiving side XenGuest will
-recognise the compressed stream and does not require special signaling.
+Xenopsd via a command line argument to emu0manager and XenGuest. On the
+receiving side XenGuest will recognise the compressed stream and does
+not require special signaling.
 
 Xapi only permits migration from older to newer versions of the Xapi
 Toolstack. This implies that no older XenGuest version will ever receive
@@ -71,16 +72,11 @@ unlikely to be effective and we don't plan to support this feature.
   not. In the absence of this parameter, the default is taken from
   `Pool.migration_compression` (which is currently `false`).
 
-* New parameter `Pool.migration_compressor` is a string value indicating
-  which compression method to use, if compression is used. This permits
-  to change change the default compression method over time, as well
-  as giving users a choice - albeit only on the pool level and not per
-  migration or per host. I believe a policy is more useful than detailed
-  control.
+* The compression method used when `Pool.migration_compression=true` is
+  *not* controlled by the API or the customer but is controlled by a
+  default in xenopsd which can be changed in xenopd.conf for testing.
 
-* `Pool.migration_compressor=stream` - use the existing external method
-
-* `Pool.migration_compressor=xenguest` - use the new internal method
+In summary, this means the API and XE CLI interface remain unchanged.
 
 ## Implementation
 
